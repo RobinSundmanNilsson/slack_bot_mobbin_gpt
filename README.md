@@ -63,11 +63,27 @@ Create a `.env` file:
 Inside `bot.py`, you can tweak:
 
 ``` python
-WINDOW_SECONDS = 60
-THRESHOLD_MESSAGES = 4
-COOLDOWN_SECONDS = 180
+WINDOW_SECONDS = 120
+THRESHOLD_MESSAGES = 3
+COOLDOWN_SECONDS = 120
 MAX_CONTEXT_MESSAGES = 10
 ```
+
+**WINDOW_SECONDS**
+How far back the bot looks when counting messages.
+Example: 120 = count messages from the last 2 minutes.
+
+**THRESHOLD_MESSAGES**
+How many messages must appear within the window to trigger a roast.
+Example: 3 = any 3 messages within 120 seconds activates the bot.
+
+**COOLDOWN_SECONDS**
+Minimum time between bot replies in the same channel.
+Example: 120 = bot can only reply once every 2 minutes.
+
+**MAX_CONTEXT_MESSAGES**
+How many recent messages are sent to Gemini as context.
+Example: 10 = the bot uses the latest 10 messages to craft a roast.
 
 ------------------------------------------------------------------------
 
