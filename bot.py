@@ -27,13 +27,12 @@ message_history = {}
 last_response = {}
 
 # config
-WINDOW_SECONDS = 60  # time window to consider past messages
+WINDOW_SECONDS = 120  # time window to consider past messages
 THRESHOLD_MESSAGES = 3  # number of messages to trigger response
 COOLDOWN_SECONDS = 120  # cooldown period after a response
 MAX_CONTEXT_MESSAGES = 10  # max number of past messages to include in context
 
 
-# --------------------------------------------------
 # helper functions:
 # clean up old messages from history
 def prune_history(channel_id, now_ts):
