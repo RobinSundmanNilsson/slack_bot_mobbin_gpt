@@ -1,5 +1,6 @@
 import os
 import time
+import threading
 from dotenv import load_dotenv
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
@@ -25,6 +26,7 @@ gemini_model = genai.GenerativeModel("gemini-2.5-flash")
 # simple in-memory storage for message history
 message_history = {}
 last_response = {}
+cooldown_threads = {}
 
 # config
 WINDOW_SECONDS = 120  # time window to consider past messages
@@ -86,6 +88,29 @@ def generate_response(context_text: str) -> str:
         return f"(Gemini error) {str(e)}"
 
 # slack event handler
+def start_cooldown_timer(channel: str, duration: int):
+    """Log a simple countdown in the terminal without blocking the main loop."""
+    # stop any existing timer for this channel
+    existing = cooldown_threads.get(channel)
+    if existing:
+        existing["stop"].set()
+
+    stop_event = threading.Event()
+
+    def _run():
+        for remaining in range(duration, 0, -1):
+            if stop_event.is_set():
+                return
+            print(f"DEBUG COOLDOWN: {channel} {remaining}s left")
+            time.sleep(1)
+        if not stop_event.is_set():
+            print(f"DEBUG COOLDOWN: {channel} ready")
+
+    t = threading.Thread(target=_run, daemon=True)
+    cooldown_threads[channel] = {"stop": stop_event, "thread": t}
+    t.start()
+
+
 @app.event("message")
 def handle_message_events(body, event, say, client, logger):
     try:
@@ -109,7 +134,12 @@ def handle_message_events(body, event, say, client, logger):
         # cooldown control
         last_ts = last_response.get(channel, 0)
         if now_ts - last_ts < COOLDOWN_SECONDS:
-            print(f"DEBUG SKIP: cooldown active ({int(now_ts - last_ts)}s since last reply)")
+            elapsed = int(now_ts - last_ts)
+            remaining = max(0, COOLDOWN_SECONDS - elapsed)
+            print(
+                f"DEBUG SKIP: cooldown active "
+                f"({elapsed}s since last reply, {remaining}s remaining)"
+            )
             return
         
         # threshold control
@@ -143,6 +173,7 @@ def handle_message_events(body, event, say, client, logger):
 
         # update last response time
         last_response[channel] = now_ts
+        start_cooldown_timer(channel, COOLDOWN_SECONDS)
 
     except SlackApiError as e:
         logger.error(f"Slack API Error: {e.response['error']}")
