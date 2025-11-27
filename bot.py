@@ -92,10 +92,12 @@ def handle_message_events(body, event, say, client, logger):
         print("DEBUG EVENT:", event)
         # ignore messages from bots
         if event.get("subtype") == "bot_message":
+            print("DEBUG SKIP: bot_message subtype")
             return
         
         channel = event.get("channel")
         if not channel:
+            print("DEBUG SKIP: missing channel id")
             return
         
         now_ts = time.time()
@@ -107,27 +109,36 @@ def handle_message_events(body, event, say, client, logger):
         # cooldown control
         last_ts = last_response.get(channel, 0)
         if now_ts - last_ts < COOLDOWN_SECONDS:
+            print(f"DEBUG SKIP: cooldown active ({int(now_ts - last_ts)}s since last reply)")
             return
         
         # threshold control
         if len(message_history[channel]) < THRESHOLD_MESSAGES:
+            print(
+                f"DEBUG SKIP: threshold not met "
+                f"({len(message_history[channel])}/{THRESHOLD_MESSAGES} messages in window)"
+            )
             return
         
         # fetch recent messages for context
+        print("DEBUG ACTION: fetching conversation history")
         history = client.conversations_history(
             channel=channel,
             limit=MAX_CONTEXT_MESSAGES,
         )
         messages = history.get("messages", [])
         if not messages:
+            print("DEBUG SKIP: no messages returned")
             return
         
         context_text = build_prompt_text(messages)
 
         # generate response
+        print("DEBUG ACTION: composing message with Gemini")
         reply = generate_response(context_text)
 
         # send reply
+        print("DEBUG ACTION: sending reply to Slack")
         say(text=reply)
 
         # update last response time
